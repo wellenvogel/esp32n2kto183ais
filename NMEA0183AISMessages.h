@@ -27,6 +27,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _tNMEA0183AISMessages_H_
 #define _tNMEA0183AISMessages_H_
 
+
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
@@ -77,6 +78,15 @@ bool SetAISClassBMessage24PartA(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t Message
 bool  SetAISClassBMessage24(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t MessageID, uint8_t Repeat,
                           uint32_t UserID, uint8_t VesselType, char *VendorID, char *Callsign,
                            double Length, double Beam, double PosRefStbd,  double PosRefBow, uint32_t MothershipID );
+
+//*****************************************************************************
+// Aton class 21
+bool SetAISMessage21(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t Repeat, uint32_t UserID,
+			   double Latitude, double Longitude, bool Accuracy, bool RAIM,
+			   uint8_t Seconds, double Length, double Beam, double PositionReferenceStarboard,
+         double PositionReferenceTrueNord, tN2kAISAtoNType Type, bool OffPositionIndicator,
+         bool VirtualAtoNFlag, bool AssignedModeFlag, tN2kGNSStype GNSSType, uint8_t AtoNStatus,
+         tN2kAISTransceiverInformation AISTransceiverInformation, char * atonName );
 
 inline int32_t aRoundToInt(double x) {
   return x >= 0
