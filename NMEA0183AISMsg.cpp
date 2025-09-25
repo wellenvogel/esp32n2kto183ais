@@ -133,10 +133,12 @@ bool tNMEA0183AISMsg::AddEncodedCharToPayloadBin(char *sval, size_t countBits) {
 }
 
 //*****************************************************************************
-bool tNMEA0183AISMsg::ConvertBinaryAISPayloadBinToAscii(const char *payloadbin) {
-  uint16_t len;
-
-  len = strlen( payloadbin ) / 6;  // 28
+int tNMEA0183AISMsg::ConvertBinaryAISPayloadBinToAscii(const char *payloadbin,uint16_t bitSize) {
+  uint16_t slen=strlen(payloadbin);
+  uint16_t bitLen=bitSize > 0?bitSize:slen;
+  uint16_t len= bitLen / 6; 
+  if ((len * 6) < bitLen) len+=1;
+  uint16_t padBits=0; 
   uint32_t offset;
   char s[7];
   uint8_t dec;
@@ -145,8 +147,14 @@ bool tNMEA0183AISMsg::ConvertBinaryAISPayloadBinToAscii(const char *payloadbin) 
     offset = i * 6;
     int k = 0;
     for (uint32_t j=offset; j<offset+6; j++ ) {
-      s[k] = payloadbin[j];
-       k++;
+      if (j < slen){
+        s[k] = payloadbin[j];
+      }
+      else{
+        s[k] = '0';
+        padBits++;
+      }
+      k++;
     }
     s[k]=0;
     dec = strtoull (s, NULL, 2);  //binToDec
@@ -158,139 +166,81 @@ bool tNMEA0183AISMsg::ConvertBinaryAISPayloadBinToAscii(const char *payloadbin) 
   }
   Payload[i]=0;
 
-  return true;
+  return padBits;
+}
+
+void tNMEA0183AISMsg::SetChannelAndTalker(bool channelA,bool own){
+  channel[0]=channelA?'A':'B';
+  strcpy(talker,own?"VDO":"VDM");
 }
 
 //**********************  BUILD 2-parted AIS Sentences  ************************
-const tNMEA0183AISMsg&  tNMEA0183AISMsg::BuildMsg5Part1(tNMEA0183AISMsg &AISMsg) {
-
-  Init("VDM", "AI", '!');
-  AddStrField("2");
-  AddStrField("1");
-  AddStrField("5");
-  AddStrField("A");
-  AddStrField( GetPayloadType5_Part1() );
-  AddStrField("0");
-
-  return AISMsg;
+bool tNMEA0183AISMsg::InitAis(int max,int number,int sequence){
+  if ( !Init(talker,"AI", '!') ) return false;
+  if ( !AddUInt32Field(max) ) return false;
+  if ( !AddUInt32Field(number) ) return false;
+  if (sequence >= 0){
+    if ( !AddUInt32Field(sequence) ) return false;
+  }
+  else{
+    if ( !AddEmptyField() ) return false;
+  }
+  if ( !AddStrField(channel) ) return false;
+  return true;
+}
+bool  tNMEA0183AISMsg::BuildMsg5Part1() {
+  if ( strlen( PayloadBin) != 424 ) return false;
+  InitAis(2,1,5);
+  int padBits=0;
+  AddStrField( GetPayload(padBits,0,336));
+  AddUInt32Field(padBits);
+  return true;
 }
 
-const tNMEA0183AISMsg&  tNMEA0183AISMsg::BuildMsg5Part2(tNMEA0183AISMsg &AISMsg) {
-
-  Init("VDM", "AI", '!');
-  AddStrField("2");
-  AddStrField("2");
-  AddStrField("5");
-  AddStrField("A");
-  AddStrField( GetPayloadType5_Part2() );
-  AddStrField("2"); // Message 5, Part 2 has always 2 Padding Zeros
-
-  return AISMsg;
+bool  tNMEA0183AISMsg::BuildMsg5Part2() {
+  if ( strlen( PayloadBin) != 424 ) return false;
+  InitAis(2,2,5);
+  int padBits=0;
+  AddStrField( GetPayload(padBits,336,88) );
+  AddUInt32Field(padBits);
+  return true;
 }
 
-const tNMEA0183AISMsg&  tNMEA0183AISMsg::BuildMsg24PartA(tNMEA0183AISMsg &AISMsg) {
-
-  Init("VDM", "AI", '!');
-  AddStrField("1");
-  AddStrField("1");
-  AddEmptyField();
-  AddStrField("A");
-  AddStrField( GetPayloadType24_PartA() );
-  AddStrField("0");
-
-  return AISMsg;
+bool tNMEA0183AISMsg::BuildMsg24PartA() {
+  if ( strlen( PayloadBin) != 296 ) return false;
+  InitAis();
+  int padBits=0;
+  AddStrField( GetPayload(padBits,0,168) );
+  AddUInt32Field(padBits);
+  return true;
 }
 
-const tNMEA0183AISMsg& tNMEA0183AISMsg::BuildMsg24PartB(tNMEA0183AISMsg &AISMsg) {
-
-  Init("VDM", "AI", '!');
-  AddStrField("1");
-  AddStrField("1");
-  AddEmptyField();
-  AddStrField("A");
-  AddStrField( GetPayloadType24_PartB() );
-  AddStrField("0");    // Message 24, both parts have always Zero Padding
-
-  return AISMsg;
+bool tNMEA0183AISMsg::BuildMsg24PartB() {
+  if ( strlen( PayloadBin) != 296 ) return false;
+  int padBits=0;
+  // Bit 0.....38 + bit39='1' (part number) + bit 168........295  296='\0' of total PayloadBin
+  // binary part B: len 40 + 128 = len 168
+  char obuf[169];
+  memcpy(obuf,PayloadBin,39);
+  obuf[39]='1';
+  memcpy(obuf+40,PayloadBin+168,128);
+  obuf[168]=0;
+  padBits=ConvertBinaryAISPayloadBinToAscii( obuf,0 );
+  InitAis();
+  AddStrField( Payload );
+  AddUInt32Field(padBits);    // Message 24, both parts have always Zero Padding
+  return true;
 }
 
 //*******************************  AIS PAYLOADS  *********************************
 // get converted Payload for Message 1, 2, 3 & 18, always Length 168
-const char *tNMEA0183AISMsg::GetPayload() {
-
+const char *tNMEA0183AISMsg::GetPayloadFix(int &padBits,uint16_t fixLen){
   uint16_t lenbin = strlen( PayloadBin);
-  if ( lenbin != 168 ) return nullptr;
-
-  if ( !ConvertBinaryAISPayloadBinToAscii( PayloadBin ) ) return nullptr;
+  if ( lenbin != fixLen ) return nullptr;
+  return GetPayload(padBits,0,0);
+}
+const char *tNMEA0183AISMsg::GetPayload(int &padBits,uint16_t offset,uint16_t bitLen) {
+  padBits=ConvertBinaryAISPayloadBinToAscii( PayloadBin+offset,bitLen );
   return Payload;
 }
 
-//******************************************************************************
-// get converted Part 1 of Payload for Message 5
-const char *tNMEA0183AISMsg::GetPayloadType5_Part1() {
-
-  uint16_t lenbin = strlen( PayloadBin);
-  if ( lenbin != 424 ) return nullptr;
-
-  char to[337];
-  strncpy(to, PayloadBin, 336); // First Part is always 336 Length
-  to[336]=0;
-
-  if ( !ConvertBinaryAISPayloadBinToAscii( to ) ) return nullptr;
-
-  return Payload;
-}
-
-//******************************************************************************
-// get converted Part 2 of Payload for Message 5
-const char *tNMEA0183AISMsg::GetPayloadType5_Part2() {
-
-  uint16_t lenbin = strlen( PayloadBin);
-  if ( lenbin != 424 ) return nullptr;
-
-  lenbin = 88;        // Second Part is always 424 - 336 + 2 padding Zeros in Length
-  char to[91];
-  strncpy(to, PayloadBin + 336, lenbin);
-  to[88]='0'; to[89]='0'; to[90]=0;
-
-  if ( !ConvertBinaryAISPayloadBinToAscii( to ) ) return nullptr;
-  return Payload;
-}
-
-//******************************************************************************
-// get converted Part A of Payload for Message 24
-// Bit 0.....167, len 168
-// In PayloadBin is Part A and Part B chained together with Length 296
-const char *tNMEA0183AISMsg::GetPayloadType24_PartA() {
-  uint16_t lenbin = strlen( PayloadBin);
-  if ( lenbin != 296 ) return nullptr;    // too short for Part A
-
-  char to[169];    // Part A has Length 168
-  for (int i=0; i<168; i++){
-    to[i] = PayloadBin[i];
-  }
-  to[168]=0;
-  if ( !ConvertBinaryAISPayloadBinToAscii( to ) ) return nullptr;
-  return Payload;
-
-}
-
-//******************************************************************************
-// get converted Part B of Payload for Message 24
-// Bit 0.....38 + bit39='1' (part number) + bit 168........295  296='\0' of total PayloadBin
-// binary part B: len 40 + 128 = len 168
-const char *tNMEA0183AISMsg::GetPayloadType24_PartB() {
-  uint16_t lenbin = strlen( PayloadBin);
-  if ( lenbin != 296 ) return nullptr;    // too short for Part B
-  char to[169];    // Part B has Length 168
-  for (int i=0; i<39; i++){
-    to[i] = PayloadBin[i];
-  }
-  to[39] = 49;  // part number 1
-  for (int i=40; i<168; i++) {
-    to[i] = PayloadBin[i+128];
-  }
-  to[168]=0;
-  if ( !ConvertBinaryAISPayloadBinToAscii( to ) ) return nullptr;
-  return Payload;
-}

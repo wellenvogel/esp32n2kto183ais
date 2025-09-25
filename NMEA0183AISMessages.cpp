@@ -101,15 +101,10 @@ bool SetAISClassABMessage1( tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t MessageType
   if ( !NMEA0183AISMsg.AddIntToPayloadBin(0, 3) ) return false;        // 145-147  | 3   Spare
   if ( !NMEA0183AISMsg.AddBoolToPayloadBin(RAIM, 1) ) return false;    // 148-148  | 1   RAIM flag 0 = RAIM not in use (default), 1 = RAIM in use
   if ( !NMEA0183AISMsg.AddIntToPayloadBin(0, 19) ) return false;       // 149-167  | 19  Radio Status  (-> 0 NOT SENT WITH THIS PGN!!!!!)
-
-  if ( !NMEA0183AISMsg.Init("VDM","AI", Prefix) ) return false;
-  if ( !NMEA0183AISMsg.AddStrField("1") ) return false;
-  if ( !NMEA0183AISMsg.AddStrField("1") ) return false;
-  if ( !NMEA0183AISMsg.AddEmptyField() ) return false;
-  if ( !NMEA0183AISMsg.AddStrField("A") ) return false;
-  if ( !NMEA0183AISMsg.AddStrField( NMEA0183AISMsg.GetPayload() ) ) return false;
-  if ( !NMEA0183AISMsg.AddStrField("0") ) return false;    // Message 1,2,3 has always Zero Padding
-
+  if ( !NMEA0183AISMsg.InitAis()) return false;        
+  int padBits=0;
+  if ( !NMEA0183AISMsg.AddStrField( NMEA0183AISMsg.GetPayloadFix(padBits) ) ) return false;
+  if ( !NMEA0183AISMsg.AddUInt32Field(padBits) ) return false;           
   return true;
 }
 
@@ -121,14 +116,16 @@ bool  SetAISClassAMessage5(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t MessageID, u
                           uint32_t UserID, uint32_t IMONumber, char *Callsign, char *Name,
                           uint8_t VesselType, double Length, double Beam, double PosRefStbd,
                           double PosRefBow, uint16_t ETAdate,  double ETAtime, double Draught,
-                          char *Destination, tN2kGNSStype GNSStype, uint8_t DTE ) {
+                          char *Destination, tN2kGNSStype GNSStype, uint8_t DTE,
+                          tN2kAISVersion AISversion) {
 
   // AIS Type 5 Message
   NMEA0183AISMsg.ClearAIS();
   if ( !AddMessageType(NMEA0183AISMsg, 5) ) return false;                // 0 - 5     | 6    Message Type -> Constant: 5
   if ( !AddRepeat(NMEA0183AISMsg, Repeat) ) return false;                // 6 - 7     | 2    Repeat Indicator: 0 = default; 3 = do not repeat any more
   if ( !AddUserID(NMEA0183AISMsg, UserID) ) return false;                // 8 - 37    | 30  MMSI
-  if ( !NMEA0183AISMsg.AddIntToPayloadBin(1, 2) ) return false;          // 38 - 39   |  2   AIS Version  -> 0 oder 1  NOT DERIVED FROM N2k, Always 1!!!!
+  if ( !NMEA0183AISMsg.AddIntToPayloadBin((uint32_t)AISversion, 2) ) 
+    return false;                                                        // 38 - 39   |  2   AIS Version  -> 0 oder 1  NOT DERIVED FROM N2k, Always 1!!!!
   if ( !AddIMONumber(NMEA0183AISMsg, IMONumber) ) return false;          // 40 - 69   | 30   IMO Number unisgned
   if ( !AddText(NMEA0183AISMsg, Callsign, 42) ) return false;            // 70 - 111  | 42   Call Sign  WDE4178      -> 7  6-bit characters -> Ascii lt. Table)
   if ( !AddText(NMEA0183AISMsg, Name, 120) ) return false;               // 112-231   | 120 Vessel Name  POINT FERMIN  -> 20 6-bit characters -> Ascii lt. Table
@@ -179,14 +176,10 @@ bool SetAISClassBMessage18(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t MessageID, u
   if ( !NMEA0183AISMsg.AddBoolToPayloadBin(Mode, 1) ) return false;    // 146      | 1   Assigned-mode flag: 0 = autonomous mode (default), 1 = assigned mode
   if ( !NMEA0183AISMsg.AddBoolToPayloadBin(RAIM, 1) ) return false;    // 147      | 1   as for Message Type 1,2,3
   if ( !NMEA0183AISMsg.AddIntToPayloadBin(0, 20) ) return false;       // 148-167  | 20  Radio Status not in PGN 129039
-
-  if ( !NMEA0183AISMsg.Init("VDM","AI", Prefix) ) return false;
-  if ( !NMEA0183AISMsg.AddStrField("1") ) return false;
-  if ( !NMEA0183AISMsg.AddStrField("1") ) return false;
-  if ( !NMEA0183AISMsg.AddEmptyField() ) return false;
-  if ( !NMEA0183AISMsg.AddStrField("B") ) return false;
-  if ( !NMEA0183AISMsg.AddStrField( NMEA0183AISMsg.GetPayload() ) ) return false;
-  if ( !NMEA0183AISMsg.AddStrField("0") ) return false;    // Message 18, has always Zero Padding
+  if ( !NMEA0183AISMsg.InitAis()) return false;        
+  int padBits=0;
+  if ( !NMEA0183AISMsg.AddStrField( NMEA0183AISMsg.GetPayloadFix(padBits) ) ) return false;
+  if ( !NMEA0183AISMsg.AddUInt32Field(padBits) ) return false;    
 
   return true;
 }
@@ -278,6 +271,56 @@ bool  SetAISClassBMessage24(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t MessageID, 
   return true;
 }
 
+//  ****************************************************************************
+// AIS ATON report (129041) -> Type 21: Position and status report for aids-to-navigation
+// PGN129041
+
+bool SetAISMessage21(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t Repeat, uint32_t UserID,
+			   double Latitude, double Longitude, bool Accuracy, bool RAIM,
+			   uint8_t Seconds, double Length, double Beam, double PositionReferenceStarboard,
+         double PositionReferenceTrueNord, tN2kAISAtoNType Type, bool OffPositionIndicator,
+         bool VirtualAtoNFlag, bool AssignedModeFlag, tN2kGNSStype GNSSType, uint8_t AtoNStatus,
+         tN2kAISTransceiverInformation AISTransceiverInformation, char * atonName ) {
+  //
+  NMEA0183AISMsg.ClearAIS();
+  if ( !AddMessageType(NMEA0183AISMsg, 21) ) return false;      // 0 - 5    | 6    Message Type -> Constant: 18
+  if ( !AddRepeat(NMEA0183AISMsg, Repeat) ) return false;              // 6 - 7    | 2    Repeat Indicator: 0 = default; 3 = do not repeat any more
+  if ( !AddUserID(NMEA0183AISMsg, UserID) ) return false;              // 8 - 37   | 30  MMSI
+  if ( ! NMEA0183AISMsg.AddIntToPayloadBin(Type,5)) return false;      //          | 5 aid type
+  //the name must be split:
+  //if it's > 120 bits the rest goes to the last parameter
+  if ( !NMEA0183AISMsg.AddEncodedCharToPayloadBin(atonName,120)) 
+    return false;                                                       //          | 120 name  
+  if ( !NMEA0183AISMsg.AddBoolToPayloadBin(Accuracy,1) ) return false; //          | 1 accuracy
+  if ( !AddLongitude(NMEA0183AISMsg,Longitude)) return false;          //          | 28 lon
+  if ( !AddLatitude(NMEA0183AISMsg,Latitude)) return false;            //          | 27 lat
+  if ( !AddDimensions(NMEA0183AISMsg, Length, Beam, 
+    PositionReferenceStarboard, PositionReferenceTrueNord)) return false; //       | 30 dim
+  if ( !AddEPFDFixType(NMEA0183AISMsg,GNSSType)) return false;         //          | 4 fix type
+  if ( !AddSeconds(NMEA0183AISMsg,Seconds)) return false;              //          | 6 second
+  if ( !NMEA0183AISMsg.AddBoolToPayloadBin(OffPositionIndicator,1)) 
+      return false;                                                    //          | 1 off
+  if ( !NMEA0183AISMsg.AddEmptyFieldToPayloadBin(8)) return false;     //          | 8 reserverd
+  if ( !NMEA0183AISMsg.AddBoolToPayloadBin(RAIM,1)) return false;      //          | 1 raim
+  if ( !NMEA0183AISMsg.AddBoolToPayloadBin(VirtualAtoNFlag,1)) 
+      return false;                                                    //          | 1 virt
+  if ( !NMEA0183AISMsg.AddBoolToPayloadBin(AssignedModeFlag,1))
+      return false;                                                    //          | 1 assigned
+  if ( !NMEA0183AISMsg.AddEmptyFieldToPayloadBin(1)) return false;     //          | 1 spare
+  size_t l=strlen(atonName);
+  if (l >=20){
+    uint8_t bitlen=(l-20)*6;
+    if (bitlen > 88) bitlen=88;
+    if ( !NMEA0183AISMsg.AddEncodedCharToPayloadBin(atonName+20,bitlen)) return false;    //          | name
+  }
+  if ( !NMEA0183AISMsg.InitAis() ) return false;
+  int padBits=0;
+  if ( !NMEA0183AISMsg.AddStrField( NMEA0183AISMsg.GetPayload(padBits) ) ) return false;
+  if ( !NMEA0183AISMsg.AddUInt32Field(padBits) ) return false;   
+
+  return true;
+}
+
 //******************************************************************************
 //                 Validations and Unit Transformations
 //******************************************************************************
@@ -327,8 +370,7 @@ bool AddIMONumber(tNMEA0183AISMsg &NMEA0183AISMsg, uint32_t &IMONumber) {
 // 120bit Name or Destination
 bool AddText(tNMEA0183AISMsg &NMEA0183AISMsg, char *FieldVal, uint8_t length) {
   uint8_t len = length/6;
-  //AddEncodedCharToPayloadBin already limits the length - so no need to add a 0 here
-  //if ( strlen(FieldVal) > len ) FieldVal[len] = 0;
+  if ( strlen(FieldVal) > len ) FieldVal[len] = 0;
   if ( !NMEA0183AISMsg.AddEncodedCharToPayloadBin(FieldVal, length) ) return false;
   return true;
 }
@@ -573,46 +615,3 @@ bool AddETADateTime(tNMEA0183AISMsg &NMEA0183AISMsg, uint16_t &ETAdate, double &
 }
 
 
-//  ****************************************************************************
-// AIS ATON report (129041) -> Type 21: Position and status report for aids-to-navigation
-// PGN129041
-
-bool SetAISMessage21(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t Repeat, uint32_t UserID,
-			   double Latitude, double Longitude, bool Accuracy, bool RAIM,
-			   uint8_t Seconds, double Length, double Beam, double PositionReferenceStarboard,
-         double PositionReferenceTrueNord, tN2kAISAtoNType Type, bool OffPositionIndicator,
-         bool VirtualAtoNFlag, bool AssignedModeFlag, tN2kGNSStype GNSSType, uint8_t AtoNStatus,
-         tN2kAISTransceiverInformation AISTransceiverInformation, char * atonName ) {
-  //
-  NMEA0183AISMsg.ClearAIS();
-  if ( !AddMessageType(NMEA0183AISMsg, 21) ) return false;      // 0 - 5    | 6    Message Type -> Constant: 18
-  if ( !AddRepeat(NMEA0183AISMsg, Repeat) ) return false;              // 6 - 7    | 2    Repeat Indicator: 0 = default; 3 = do not repeat any more
-  if ( !AddUserID(NMEA0183AISMsg, UserID) ) return false;              // 8 - 37   | 30  MMSI
-  if ( ! NMEA0183AISMsg.AddIntToPayloadBin(Type,5)) return false;      //          | 5 aid type
-  //the name must be split:
-  //if it's > 120 bits the rest goes to the last parameter
-  if ( !AddText(NMEA0183AISMsg,atonName,120)) return false;            //          | 120 name  
-  if ( !NMEA0183AISMsg.AddBoolToPayloadBin(Accuracy,1) ) return false; //          | 1 accuracy
-  if ( !AddLongitude(NMEA0183AISMsg,Longitude)) return false;          //          | 28 lon
-  if ( !AddLatitude(NMEA0183AISMsg,Latitude)) return false;            //          | 27 lat
-  if ( !AddDimensions(NMEA0183AISMsg, Length, Beam, 
-    PositionReferenceStarboard, PositionReferenceTrueNord)) return false; //       | 30 dim
-  if ( !AddEPFDFixType(NMEA0183AISMsg,GNSSType)) return false;         //          | 4 fix type
-  if ( !AddSeconds(NMEA0183AISMsg,Seconds)) return false;              //          | 6 second
-  if ( !NMEA0183AISMsg.AddBoolToPayloadBin(OffPositionIndicator,1)) 
-      return false;                                                    //          | 1 off
-  if ( !NMEA0183AISMsg.AddEmptyFieldToPayloadBin(8)) return false;     //          | 8 reserverd
-  if ( !NMEA0183AISMsg.AddBoolToPayloadBin(RAIM,1)) return false;      //          | 1 raim
-  if ( !NMEA0183AISMsg.AddBoolToPayloadBin(VirtualAtoNFlag,1)) 
-      return false;                                                    //          | 1 virt
-  if ( !NMEA0183AISMsg.AddBoolToPayloadBin(AssignedModeFlag,1))
-      return false;                                                    //          | 1 assigned
-  if ( !NMEA0183AISMsg.AddEmptyFieldToPayloadBin(1)) return false;     //          | 1 spare
-  size_t l=strlen(atonName);
-  if (l >=20){
-    uint8_t bitlen=(l-20)*6;
-    if ( !AddText(NMEA0183AISMsg,atonName+20,bitlen)) return false;    //          | name
-  }
-
-  return true;
-}

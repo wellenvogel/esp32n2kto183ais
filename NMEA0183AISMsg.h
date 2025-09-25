@@ -55,6 +55,8 @@ class tNMEA0183AISMsg : public tNMEA0183Msg {
     uint16_t iAddPldBin;
     char Payload[AIS_MSG_MAX_LEN];
     uint8_t  iAddPld;
+    char talker[4]="VDM";
+    char channel[2]="A";
 
   public:
     char PayloadBin[AIS_BIN_MAX_LEN];
@@ -64,24 +66,32 @@ class tNMEA0183AISMsg : public tNMEA0183Msg {
 
   public:
     tNMEA0183AISMsg();
-    const char *GetPayload();
-    const char *GetPayloadType5_Part1();
-    const char *GetPayloadType5_Part2();
-    const char *GetPayloadType24_PartA();
-    const char *GetPayloadType24_PartB();
+    const char *GetPayloadFix(int &padBits,uint16_t fixLen=168);
+    const char *GetPayload(int &padBits,uint16_t offset=0,uint16_t bitLen=0);
     const char *GetPayloadBin() const { return  PayloadBin; }
 
-    const tNMEA0183AISMsg& BuildMsg5Part1(tNMEA0183AISMsg &AISMsgn);
-    const tNMEA0183AISMsg& BuildMsg5Part2(tNMEA0183AISMsg &AISMsg);
-    const tNMEA0183AISMsg& BuildMsg24PartA(tNMEA0183AISMsg &AISMsg);
-    const tNMEA0183AISMsg& BuildMsg24PartB(tNMEA0183AISMsg &AISMsg);
+    bool BuildMsg5Part1();
+    bool BuildMsg5Part2();
+    bool BuildMsg24PartA();
+    bool BuildMsg24PartB();
+    bool InitAis(int max=1,int number=1,int sequence=-1);
 
     // Generally Used
     bool AddIntToPayloadBin(int32_t ival, uint16_t countBits);
     bool AddBoolToPayloadBin(bool &bval, uint8_t size);
     bool AddEncodedCharToPayloadBin(char *sval, size_t Length);
     bool AddEmptyFieldToPayloadBin(uint8_t iBits);
-    bool ConvertBinaryAISPayloadBinToAscii(const char *payloadbin);
+    /**
+     * @param channelA - if set A, otherwise B
+     * @param own - if set VDO, else VDM
+     */
+    void SetChannelAndTalker(bool channelA,bool own=false);
+    /**
+     * convert the payload to ascii
+     * return the number of padding bits
+     * @param bitSize the number of bits to be used, 0 - use all bits
+     */
+    int ConvertBinaryAISPayloadBinToAscii(const char *payloadbin,uint16_t bitSize);
 
   // AIS Helper functions
   protected:

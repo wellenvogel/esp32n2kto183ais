@@ -59,7 +59,8 @@ bool SetAISClassAMessage5(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t MessageID, ui
                           uint32_t UserID, uint32_t IMONumber, char *Callsign, char *Name,
                           uint8_t VesselType, double Length, double Beam, double PosRefStbd,
                           double PosRefBow, uint16_t ETAdate,  double ETAtime, double Draught,
-                          char *Destination, tN2kGNSStype GNSStype, uint8_t DTE );
+                          char *Destination, tN2kGNSStype GNSStype, uint8_t DTE,
+                          tN2kAISVersion AISversion);
 
 //*****************************************************************************
 // AIS position report (class B 129039) -> Standard Class B CS Position Report Message Type 18 Part B
