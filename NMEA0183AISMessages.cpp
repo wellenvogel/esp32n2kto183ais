@@ -280,7 +280,7 @@ bool SetAISMessage21(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t Repeat, uint32_t U
 			   uint8_t Seconds, double Length, double Beam, double PositionReferenceStarboard,
          double PositionReferenceTrueNord, tN2kAISAtoNType Type, bool OffPositionIndicator,
          bool VirtualAtoNFlag, bool AssignedModeFlag, tN2kGNSStype GNSSType, uint8_t AtoNStatus,
-         tN2kAISTransceiverInformation AISTransceiverInformation, char * atonName ) {
+         char * atonName ) {
   //
   NMEA0183AISMsg.ClearAIS();
   if ( !AddMessageType(NMEA0183AISMsg, 21) ) return false;      // 0 - 5    | 6    Message Type -> Constant: 18
@@ -300,13 +300,13 @@ bool SetAISMessage21(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t Repeat, uint32_t U
   if ( !AddSeconds(NMEA0183AISMsg,Seconds)) return false;              //          | 6 second
   if ( !NMEA0183AISMsg.AddBoolToPayloadBin(OffPositionIndicator,1)) 
       return false;                                                    //          | 1 off
-  if ( !NMEA0183AISMsg.AddEmptyFieldToPayloadBin(8)) return false;     //          | 8 reserverd
+  if ( !NMEA0183AISMsg.AddIntToPayloadBin(0,8)) return false;     //          | 8 reserverd
   if ( !NMEA0183AISMsg.AddBoolToPayloadBin(RAIM,1)) return false;      //          | 1 raim
   if ( !NMEA0183AISMsg.AddBoolToPayloadBin(VirtualAtoNFlag,1)) 
       return false;                                                    //          | 1 virt
   if ( !NMEA0183AISMsg.AddBoolToPayloadBin(AssignedModeFlag,1))
       return false;                                                    //          | 1 assigned
-  if ( !NMEA0183AISMsg.AddEmptyFieldToPayloadBin(1)) return false;     //          | 1 spare
+  if ( !NMEA0183AISMsg.AddIntToPayloadBin(0,1)) return false;          //          | 1 spare
   size_t l=strlen(atonName);
   if (l >=20){
     uint8_t bitlen=(l-20)*6;

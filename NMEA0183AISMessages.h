@@ -87,7 +87,7 @@ bool SetAISMessage21(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t Repeat, uint32_t U
 			   uint8_t Seconds, double Length, double Beam, double PositionReferenceStarboard,
          double PositionReferenceTrueNord, tN2kAISAtoNType Type, bool OffPositionIndicator,
          bool VirtualAtoNFlag, bool AssignedModeFlag, tN2kGNSStype GNSSType, uint8_t AtoNStatus,
-         tN2kAISTransceiverInformation AISTransceiverInformation, char * atonName );
+         char * atonName );
 
 inline int32_t aRoundToInt(double x) {
   return x >= 0

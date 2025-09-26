@@ -80,7 +80,6 @@ class tNMEA0183AISMsg : public tNMEA0183Msg {
     bool AddIntToPayloadBin(int32_t ival, uint16_t countBits);
     bool AddBoolToPayloadBin(bool &bval, uint8_t size);
     bool AddEncodedCharToPayloadBin(char *sval, size_t Length);
-    bool AddEmptyFieldToPayloadBin(uint8_t iBits);
     /**
      * @param channelA - if set A, otherwise B
      * @param own - if set VDO, else VDM

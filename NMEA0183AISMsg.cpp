@@ -49,19 +49,6 @@ void tNMEA0183AISMsg::ClearAIS() {
   iAddPld=0;
 }
 
-//*****************************************************************************
-// Add 6bit with no data.
-bool tNMEA0183AISMsg::AddEmptyFieldToPayloadBin(uint8_t iBits) {
-
-  if ( (iAddPldBin + iBits * 6) >= AIS_BIN_MAX_LEN ) return false; // Is there room for any data
-
-  for (uint8_t i=0;i<iBits;i++) {
-    strncpy(PayloadBin+iAddPldBin, EmptyAISField, 6);
-    iAddPldBin+=6;
-  }
-
-  return true;
-}
 
 //*****************************************************************************
 bool tNMEA0183AISMsg::AddIntToPayloadBin(int32_t ival, uint16_t countBits) {
@@ -73,10 +60,8 @@ bool tNMEA0183AISMsg::AddIntToPayloadBin(int32_t ival, uint16_t countBits) {
   PayloadBin[iAddPldBin]=0;
   uint16_t iAdd=iAddPldBin;
 
-  char buf[2];
   for(int i = countBits-1; i >= 0 ; i--) {
-    snprintf(buf, sizeof(buf), "%d", (int) bset[i]);
-    PayloadBin[iAdd] = buf[0];
+    PayloadBin[iAdd]=bset [i]?'1':'0';
     iAdd++;
   }
 
