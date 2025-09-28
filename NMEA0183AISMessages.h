@@ -37,16 +37,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <string>
 
-#define MAX_SHIP_IN_VECTOR 200
-class ship {
-public:
-    uint32_t _userID;
-    std::string _shipName;
-
-    ship(uint32_t UserID, std::string ShipName) :  _userID(UserID), _shipName(ShipName) {}
-};
-
-extern std::vector<ship *> vships;
 
 // Types 1, 2 and 3: Position Report Class A or B
 bool SetAISClassABMessage1(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t MessageType, uint8_t Repeat,
@@ -76,7 +66,7 @@ bool SetAISClassBMessage24PartA(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t Message
 
 //*****************************************************************************
 // Static Data Report Class B, Message Type 24
-bool  SetAISClassBMessage24(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t MessageID, uint8_t Repeat,
+bool  SetAISClassBMessage24PartB(tNMEA0183AISMsg &NMEA0183AISMsg, uint8_t MessageID, uint8_t Repeat,
                           uint32_t UserID, uint8_t VesselType, char *VendorID, char *Callsign,
                            double Length, double Beam, double PosRefStbd,  double PosRefBow, uint32_t MothershipID );
 

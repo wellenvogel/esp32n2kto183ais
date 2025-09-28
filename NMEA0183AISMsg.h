@@ -57,10 +57,8 @@ class tNMEA0183AISMsg : public tNMEA0183Msg {
     uint8_t  iAddPld;
     char talker[4]="VDM";
     char channel[2]="A";
-
+    std::bitset<AIS_BIN_MAX_LEN> PayloadBin;
   public:
-    char PayloadBin[AIS_BIN_MAX_LEN];
-    char PayloadBin2[AIS_BIN_MAX_LEN];
     // Clear message
     void ClearAIS();
 
@@ -68,17 +66,14 @@ class tNMEA0183AISMsg : public tNMEA0183Msg {
     tNMEA0183AISMsg();
     const char *GetPayloadFix(int &padBits,uint16_t fixLen=168);
     const char *GetPayload(int &padBits,uint16_t offset=0,uint16_t bitLen=0);
-    const char *GetPayloadBin() const { return  PayloadBin; }
 
     bool BuildMsg5Part1();
     bool BuildMsg5Part2();
-    bool BuildMsg24PartA();
-    bool BuildMsg24PartB();
     bool InitAis(int max=1,int number=1,int sequence=-1);
 
     // Generally Used
     bool AddIntToPayloadBin(int32_t ival, uint16_t countBits);
-    bool AddBoolToPayloadBin(bool &bval, uint8_t size);
+    bool AddBoolToPayloadBin(bool &bval);
     bool AddEncodedCharToPayloadBin(char *sval, size_t Length);
     /**
      * @param channelA - if set A, otherwise B
@@ -90,7 +85,8 @@ class tNMEA0183AISMsg : public tNMEA0183Msg {
      * return the number of padding bits
      * @param bitSize the number of bits to be used, 0 - use all bits
      */
-    int ConvertBinaryAISPayloadBinToAscii(const char *payloadbin,uint16_t bitSize);
+    template  <unsigned int SZ>
+    int ConvertBinaryAISPayloadBinToAscii(std::bitset<SZ> &src,uint16_t maxSize, uint16_t bitSize,uint16_t offset=0);
 
   // AIS Helper functions
   protected:
